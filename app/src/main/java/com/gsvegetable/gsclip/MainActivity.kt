@@ -158,8 +158,9 @@ private fun HomeScreen(
             }
             Spacer(Modifier.height(12.dp))
             AnimatedContent(targetState = canvasMode, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "view-mode") { canvas ->
-                LazyColumn(contentPadding = PaddingValues(bottom = 100.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(notes, key = { it.id }) { note -> NoteCard(note, canvas, onClick = { onOpen(note) }) }
+                if (canvas) CanvasBoard(notes = notes, onOpen = onOpen)
+                else LazyColumn(contentPadding = PaddingValues(bottom = 100.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(notes, key = { it.id }) { note -> NoteCard(note, false, onClick = { onOpen(note) }) }
                 }
             }
         }
@@ -167,9 +168,9 @@ private fun HomeScreen(
 }
 
 @Composable
-private fun NoteCard(note: Note, canvas: Boolean, onClick: () -> Unit) {
+private fun NoteCard(note: Note, canvas: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Surface(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
         shape = RoundedCornerShape(if (canvas) 26.dp else 22.dp),
         color = if (canvas) note.color.copy(alpha = .86f) else Color.White.copy(alpha = .72f),
         tonalElevation = 0.dp, shadowElevation = 1.dp
@@ -178,6 +179,33 @@ private fun NoteCard(note: Note, canvas: Boolean, onClick: () -> Unit) {
             Text(note.title.ifBlank { "未命名笔记" }, style = MaterialTheme.typography.titleMedium, color = Color(0xFF262522), fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(8.dp))
             Text(note.body, style = MaterialTheme.typography.bodyMedium, color = Color(0xFF77736D), maxLines = 3)
+        }
+    }
+}
+
+
+@Composable
+private fun CanvasBoard(notes: List<Note>, onOpen: (Note) -> Unit) {
+    val positions = remember { mutableStateMapOf<Long, Offset>() }
+    BoxWithConstraints(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())) {
+        val rightX = (maxWidth.value - 250f).coerceAtLeast(0f)
+        val boardHeight = maxOf(maxHeight, (notes.size * 190 + 120).dp)
+        Box(Modifier.fillMaxWidth().height(boardHeight)) {
+            notes.forEachIndexed { index, note ->
+                val initial = Offset(if (index % 2 == 0) 0f else rightX, (index / 2 * 190).toFloat())
+                val position = positions[note.id] ?: initial
+                NoteCard(
+                    note = note, canvas = true, onClick = { onOpen(note) },
+                    modifier = Modifier.offset(x = position.x.dp, y = position.y.dp).width(230.dp)
+                        .pointerInput(note.id) {
+                            detectDragGestures { change, dragAmount ->
+                                change.consume()
+                                val current = positions[note.id] ?: initial
+                                positions[note.id] = current + Offset(dragAmount.x / density, dragAmount.y / density)
+                            }
+                        }
+                )
+            }
         }
     }
 }
