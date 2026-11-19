@@ -56,18 +56,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.consume
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.round
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import io.github.neoruaa.glasmio.core.GlasmioTheme
 import io.github.neoruaa.glasmio.glass.GlasmioBackdropHost
 import org.json.JSONArray
 import org.json.JSONObject
-import kotlin.math.roundToInt
 
 private data class Note(val id: Long, val title: String, val body: String, val color: Color)
 
@@ -263,21 +260,22 @@ private fun NoteCard(note: Note, canvas: Boolean, onClick: () -> Unit, modifier:
 @Composable
 private fun CanvasBoard(notes: List<Note>, positions: MutableMap<Long, Offset>, onOpen: (Note) -> Unit) {
     BoxWithConstraints(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        val density = LocalDensity.current.density
         val rightX = (maxWidth.value - 250f).coerceAtLeast(0f)
-        val boardHeight = maxOf(maxHeight, (notes.size * 190 + 160).dp)
+        val boardHeight = maxOf(560.dp, (notes.size * 190 + 160).dp)
         Box(Modifier.fillMaxWidth().height(boardHeight)) {
             notes.forEachIndexed { index, note ->
                 val initial = Offset(if (index % 2 == 0) 0f else rightX, (index / 2 * 190).toFloat())
                 val position = positions[note.id] ?: initial
                 NoteCard(
                     note = note, canvas = true, onClick = { onOpen(note) },
-                    modifier = Modifier.offset { IntOffset(position.x.roundToInt(), position.y.roundToInt()) }
+                    modifier = Modifier.offset(x = position.x.dp, y = position.y.dp)
                         .width(230.dp)
                         .pointerInput(note.id) {
                             detectDragGestures { change, dragAmount ->
                                 change.consume()
                                 val current = positions[note.id] ?: initial
-                                positions[note.id] = current + dragAmount
+                                positions[note.id] = current + Offset(dragAmount.x / density, dragAmount.y / density)
                             }
                         }
                 )
