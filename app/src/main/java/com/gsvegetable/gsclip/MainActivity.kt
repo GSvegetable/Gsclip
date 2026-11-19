@@ -68,6 +68,10 @@ import org.json.JSONObject
 
 private data class Note(val id: Long, val title: String, val body: String, val color: Color)
 
+private val notePalette = listOf(
+    Color(0xFFE8E0D3), Color(0xFFDCE7E2), Color(0xFFE5DFF0), Color(0xFFF0DFD8), Color(0xFFE6E8D8)
+)
+
 private val starterNotes = listOf(
     Note(1, "灵感收集", "把突然想到的点子先放在这里。\n不需要整理，先记录。", Color(0xFFE8E0D3)),
     Note(2, "周末计划", "去逛一家没去过的书店\n整理桌面和照片", Color(0xFFDCE7E2)),
@@ -163,7 +167,7 @@ private fun GsclipApp() {
                                 val index = notes.indexOfFirst { it.id == old.id }
                                 if (index >= 0) notes[index] = old.copy(title = draftTitle, body = draftBody)
                             } else if (draftTitle.isNotBlank() || draftBody.isNotBlank()) {
-                                val created = Note(System.currentTimeMillis(), draftTitle.ifBlank { "未命名笔记" }, draftBody, Color(0xFFE8E0D3))
+                                val created = Note(System.currentTimeMillis(), draftTitle.ifBlank { "未命名笔记" }, draftBody, notePalette[notes.size % notePalette.size])
                                 notes.add(0, created)
                                 positions.remove(created.id)
                             }
@@ -264,11 +268,43 @@ private fun HomeScreen(
                 transitionSpec = { fadeIn() togetherWith fadeOut() },
                 label = "view-mode"
             ) { canvas ->
-                if (canvas) CanvasBoard(notes = notes, positions = positions, onOpen = onOpen)
-                else LazyColumn(contentPadding = PaddingValues(bottom = 100.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(notes, key = { it.id }) { note -> NoteCard(note, false, onClick = { onOpen(note) }) }
+                if (notes.isEmpty()) {
+                    EmptyState(isSearching = search.isNotBlank(), onCreate = onCreate)
+                } else if (canvas) {
+                    CanvasBoard(notes = notes, positions = positions, onOpen = onOpen)
+                } else {
+                    LazyColumn(contentPadding = PaddingValues(bottom = 100.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        items(notes, key = { it.id }) { note -> NoteCard(note, false, onClick = { onOpen(note) }) }
+                    }
                 }
             }
+        }
+    }
+}
+
+
+@Composable
+private fun EmptyState(isSearching: Boolean, onCreate: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(bottom = 72.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            if (isSearching) "没有找到这条笔记" else "这里还空着",
+            style = MaterialTheme.typography.titleMedium,
+            color = Color(0xFF393733),
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            if (isSearching) "试试其他关键词" else "把第一个想法放进来",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color(0xFF898782)
+        )
+        if (!isSearching) {
+            Spacer(Modifier.height(14.dp))
+            TextButton(onClick = onCreate) { Text("新建一条笔记") }
         }
     }
 }
