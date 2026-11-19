@@ -36,12 +36,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.neoruaa.glasmio.core.GlasmioTheme
 import io.github.neoruaa.glasmio.glass.GlasmioBackdropHost
-import kotlin.math.roundToInt
 
 private val ink = Color(0xFF24231F)
 private val muted = Color(0xFF89877F)
@@ -115,7 +113,6 @@ private fun GsclipApp() {
                     canvasMode = canvasMode, search = search, onSearch = { search = it }, onMode = { canvasMode = it },
                     onCreate = { openEditor(null) }, onOpen = { openEditor(it) },
                     onMove = { id, x, y -> val i = notes.indexOfFirst { it.id == id }; if (i >= 0) { notes[i] = notes[i].copy(x = x.coerceAtLeast(0f), y = y.coerceAtLeast(0f)); persist() } },
-                    onDelete = { id -> notes.removeAll { it.id == id }; persist() }
                 )
             }
         )
@@ -219,7 +216,7 @@ private fun CanvasNote(note: Note, onOpen: () -> Unit, onMove: (Float, Float) ->
     var position by remember(note.id) { mutableStateOf(note.x to note.y) }
     LaunchedEffect(note.x, note.y) { position = note.x to note.y }
     val density = androidx.compose.ui.platform.LocalDensity.current
-    Column(Modifier.offset { IntOffset(position.first.roundToInt(), position.second.roundToInt()) }.width(156.dp)
+    Column(Modifier.offset(x = position.first.dp, y = position.second.dp).width(156.dp)
         .shadow(9.dp, RoundedCornerShape(5.dp)).clip(RoundedCornerShape(5.dp)).background(noteColors[note.color.coerceIn(noteColors.indices)])
         .pointerInput(note.id) {
             detectDragGestures(onDrag = { change, drag ->
