@@ -11,8 +11,8 @@ android {
         applicationId = "com.gsvegetable.gsclip"
         minSdk = 33
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.3.0"
     }
 
     buildFeatures { compose = true }
@@ -31,7 +31,7 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
-    implementation("io.github.neoruaa.glasmio:glasmio-scaffold:0.1.2")
-    implementation("io.github.neoruaa.glasmio:glasmio-preference:0.1.2")
+    implementation("io.github.neoruaa.glasmio:glasmio-scaffold:0.1.3")
+    implementation("io.github.neoruaa.glasmio:glasmio-preference:0.1.3")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
