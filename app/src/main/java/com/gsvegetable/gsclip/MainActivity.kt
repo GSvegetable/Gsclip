@@ -331,7 +331,8 @@ private fun NoteCard(note: Note, canvas: Boolean, onClick: () -> Unit, modifier:
 private fun CanvasBoard(notes: List<Note>, positions: MutableMap<Long, Offset>, onOpen: (Note) -> Unit) {
     BoxWithConstraints(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         val density = LocalDensity.current.density
-        val rightX = (maxWidth.value - 250f).coerceAtLeast(0f)
+        val canvasMaxWidth = maxWidth
+        val rightX = (canvasMaxWidth.value - 250f).coerceAtLeast(0f)
         val furthestNoteY = positions.values.maxOfOrNull { it.y } ?: 0f
         val boardHeight = maxOf(560.dp, (notes.size * 190 + 160).dp, (furthestNoteY + 320f).dp)
         Box(Modifier.fillMaxWidth().height(boardHeight)) {
@@ -346,7 +347,7 @@ private fun CanvasBoard(notes: List<Note>, positions: MutableMap<Long, Offset>, 
                             detectDragGestures { change, dragAmount ->
                                 change.consume()
                                 val current = positions[note.id] ?: initial
-                                val maxX = (maxWidth.value - 230f).coerceAtLeast(0f)
+                                val maxX = (canvasMaxWidth.value - 230f).coerceAtLeast(0f)
                                 val moved = current + Offset(dragAmount.x / density, dragAmount.y / density)
                                 positions[note.id] = Offset(moved.x.coerceIn(0f, maxX), moved.y.coerceAtLeast(0f))
                             }
