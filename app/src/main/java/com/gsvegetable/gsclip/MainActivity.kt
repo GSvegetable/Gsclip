@@ -1,5 +1,6 @@
 package com.gsvegetable.gsclip
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -9,8 +10,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -18,10 +21,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
@@ -37,20 +44,82 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.consume
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.round
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalContext
 import io.github.neoruaa.glasmio.core.GlasmioTheme
 import io.github.neoruaa.glasmio.glass.GlasmioBackdropHost
+import org.json.JSONArray
+import org.json.JSONObject
+import kotlin.math.roundToInt
 
 private data class Note(val id: Long, val title: String, val body: String, val color: Color)
+
+private val starterNotes = listOf(
+    Note(1, "灵感收集", "把突然想到的点子先放在这里。\n不需要整理，先记录。", Color(0xFFE8E0D3)),
+    Note(2, "周末计划", "去逛一家没去过的书店\n整理桌面和照片", Color(0xFFDCE7E2)),
+    Note(3, "关于一个新项目", "让笔记像便签一样自由地散落在画布上。", Color(0xFFE5DFF0)),
+)
+
+private fun loadNotes(context: Context): List<Note> {
+    val raw = context.getSharedPreferences("gsclip_local", Context.MODE_PRIVATE).getString("notes", null)
+        ?: return starterNotes
+    return runCatching {
+        val array = JSONArray(raw)
+        buildList {
+            for (i in 0 until array.length()) {
+                val item = array.getJSONObject(i)
+                add(Note(item.getLong("id"), item.optString("title"), item.optString("body"), Color(item.optInt("color", 0xFFE8E0D3.toInt()))))
+            }
+        }
+    }.getOrElse { starterNotes }
+}
+
+private fun encodeNotes(notes: List<Note>): String = JSONArray().apply {
+    notes.forEach { note ->
+        put(JSONObject().apply {
+            put("id", note.id)
+            put("title", note.title)
+            put("body", note.body)
+            put("color", note.color.toArgb())
+        })
+    }
+}.toString()
+
+private fun loadPositions(context: Context): Map<Long, Offset> {
+    val raw = context.getSharedPreferences("gsclip_local", Context.MODE_PRIVATE).getString("positions", null) ?: return emptyMap()
+    return runCatching {
+        val array = JSONArray(raw)
+        buildMap {
+            for (i in 0 until array.length()) {
+                val item = array.getJSONObject(i)
+                put(item.getLong("id"), Offset(item.getDouble("x").toFloat(), item.getDouble("y").toFloat()))
+            }
+        }
+    }.getOrDefault(emptyMap())
+}
+
+private fun encodePositions(positions: Map<Long, Offset>): String = JSONArray().apply {
+    positions.forEach { (id, point) ->
+        put(JSONObject().apply { put("id", id); put("x", point.x); put("y", point.y) })
+    }
+}.toString()
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -61,18 +130,22 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun GsclipApp() {
-    val notes = remember {
-        mutableStateListOf(
-            Note(1, "灵感收集", "把突然想到的点子先放在这里。\n不需要整理，先记录。", Color(0xFFE8E0D3)),
-            Note(2, "周末计划", "去逛一家没去过的书店\n整理桌面和照片", Color(0xFFDCE7E2)),
-            Note(3, "关于一个新项目", "让笔记像便签一样自由地散落在画布上。", Color(0xFFE5DFF0)),
-        )
-    }
+    val context = LocalContext.current
+    val prefs = remember(context) { context.getSharedPreferences("gsclip_local", Context.MODE_PRIVATE) }
+    val notes = remember(context) { mutableStateListOf<Note>().apply { addAll(loadNotes(context)) } }
+    val positions = remember(context) { mutableStateMapOf<Long, Offset>().apply { putAll(loadPositions(context)) } }
     var canvasMode by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<Note?>(null) }
     var search by remember { mutableStateOf("") }
     var draftTitle by remember { mutableStateOf("") }
     var draftBody by remember { mutableStateOf("") }
+
+    LaunchedEffect(notes.toList()) {
+        prefs.edit().putString("notes", encodeNotes(notes)).apply()
+    }
+    LaunchedEffect(positions.toMap()) {
+        prefs.edit().putString("positions", encodePositions(positions)).apply()
+    }
 
     GlasmioTheme {
         GlasmioBackdropHost(
@@ -87,8 +160,11 @@ private fun GsclipApp() {
                         onClose = {
                             val old = editing
                             if (draftTitle.isNotBlank() || draftBody.isNotBlank()) {
-                                if (old == null || old.id == -1L) notes.add(0, Note(System.currentTimeMillis(), draftTitle.ifBlank { "未命名笔记" }, draftBody, Color(0xFFE8E0D3)))
-                                else {
+                                if (old == null || old.id == -1L) {
+                                    val created = Note(System.currentTimeMillis(), draftTitle.ifBlank { "未命名笔记" }, draftBody, Color(0xFFE8E0D3))
+                                    notes.add(0, created)
+                                    positions.remove(created.id)
+                                } else {
                                     val index = notes.indexOfFirst { it.id == old.id }
                                     if (index >= 0) notes[index] = old.copy(title = draftTitle, body = draftBody)
                                 }
@@ -100,15 +176,10 @@ private fun GsclipApp() {
                     HomeScreen(
                         notes = notes.filter { search.isBlank() || it.title.contains(search, true) || it.body.contains(search, true) },
                         canvasMode = canvasMode, search = search,
+                        positions = positions,
                         onSearchChange = { search = it }, onModeChange = { canvasMode = it },
-                        onCreate = {
-                            draftTitle = ""; draftBody = ""
-                            editing = Note(-1, "", "", Color(0xFFE8E0D3))
-                        },
-                        onOpen = { note ->
-                            editing = note
-                            draftTitle = note.title; draftBody = note.body
-                        }
+                        onCreate = { draftTitle = ""; draftBody = ""; editing = Note(-1, "", "", Color(0xFFE8E0D3)) },
+                        onOpen = { note -> editing = note; draftTitle = note.title; draftBody = note.body }
                     )
                 }
             }
@@ -119,6 +190,7 @@ private fun GsclipApp() {
 @Composable
 private fun HomeScreen(
     notes: List<Note>, canvasMode: Boolean, search: String,
+    positions: MutableMap<Long, Offset>,
     onSearchChange: (String) -> Unit, onModeChange: (Boolean) -> Unit,
     onCreate: () -> Unit, onOpen: (Note) -> Unit,
 ) {
@@ -157,8 +229,13 @@ private fun HomeScreen(
                 Text("${notes.size} 条", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
             }
             Spacer(Modifier.height(12.dp))
-            AnimatedContent(targetState = canvasMode, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "view-mode") { canvas ->
-                if (canvas) CanvasBoard(notes = notes, onOpen = onOpen)
+            AnimatedContent(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                targetState = canvasMode,
+                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                label = "view-mode"
+            ) { canvas ->
+                if (canvas) CanvasBoard(notes = notes, positions = positions, onOpen = onOpen)
                 else LazyColumn(contentPadding = PaddingValues(bottom = 100.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(notes, key = { it.id }) { note -> NoteCard(note, false, onClick = { onOpen(note) }) }
                 }
@@ -172,36 +249,35 @@ private fun NoteCard(note: Note, canvas: Boolean, onClick: () -> Unit, modifier:
     Surface(
         modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
         shape = RoundedCornerShape(if (canvas) 26.dp else 22.dp),
-        color = if (canvas) note.color.copy(alpha = .86f) else Color.White.copy(alpha = .72f),
+        color = if (canvas) note.color.copy(alpha = .92f) else Color.White.copy(alpha = .72f),
         tonalElevation = 0.dp, shadowElevation = 1.dp
     ) {
         Column(Modifier.padding(18.dp)) {
             Text(note.title.ifBlank { "未命名笔记" }, style = MaterialTheme.typography.titleMedium, color = Color(0xFF262522), fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(8.dp))
-            Text(note.body, style = MaterialTheme.typography.bodyMedium, color = Color(0xFF77736D), maxLines = 3)
+            Text(note.body, style = MaterialTheme.typography.bodyMedium, color = Color(0xFF77736D), maxLines = 4)
         }
     }
 }
 
-
 @Composable
-private fun CanvasBoard(notes: List<Note>, onOpen: (Note) -> Unit) {
-    val positions = remember { mutableStateMapOf<Long, Offset>() }
-    BoxWithConstraints(Modifier.fillMaxWidth().height(maxOf(480.dp, (notes.size * 190 + 120).dp)).verticalScroll(rememberScrollState())) {
+private fun CanvasBoard(notes: List<Note>, positions: MutableMap<Long, Offset>, onOpen: (Note) -> Unit) {
+    BoxWithConstraints(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         val rightX = (maxWidth.value - 250f).coerceAtLeast(0f)
-        val boardHeight = maxOf(maxHeight, (notes.size * 190 + 120).dp)
+        val boardHeight = maxOf(maxHeight, (notes.size * 190 + 160).dp)
         Box(Modifier.fillMaxWidth().height(boardHeight)) {
             notes.forEachIndexed { index, note ->
                 val initial = Offset(if (index % 2 == 0) 0f else rightX, (index / 2 * 190).toFloat())
                 val position = positions[note.id] ?: initial
                 NoteCard(
                     note = note, canvas = true, onClick = { onOpen(note) },
-                    modifier = Modifier.offset(x = position.x.dp, y = position.y.dp).width(230.dp)
+                    modifier = Modifier.offset { IntOffset(position.x.roundToInt(), position.y.roundToInt()) }
+                        .width(230.dp)
                         .pointerInput(note.id) {
                             detectDragGestures { change, dragAmount ->
                                 change.consume()
                                 val current = positions[note.id] ?: initial
-                                positions[note.id] = current + Offset(dragAmount.x / density, dragAmount.y / density)
+                                positions[note.id] = current + dragAmount
                             }
                         }
                 )
