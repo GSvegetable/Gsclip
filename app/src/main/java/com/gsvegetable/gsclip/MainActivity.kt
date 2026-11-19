@@ -161,6 +161,7 @@ private fun GsclipApp() {
                         onTitleChange = { draftTitle = it },
                         onBodyChange = { draftBody = it },
                         canDelete = editing?.id != -1L,
+                        onCancel = { editing = null },
                         onClose = {
                             val old = editing
                             if (old != null && old.id != -1L) {
@@ -356,7 +357,7 @@ private fun CanvasBoard(notes: List<Note>, positions: MutableMap<Long, Offset>, 
 private fun EditorScreen(
     title: String, body: String, onTitleChange: (String) -> Unit,
     onBodyChange: (String) -> Unit, canDelete: Boolean,
-    onClose: () -> Unit, onDelete: () -> Unit,
+    onCancel: () -> Unit, onClose: () -> Unit, onDelete: () -> Unit,
 ) {
     Column(Modifier.fillMaxSize().background(Color(0xFFF4F3F0)).padding(horizontal = 22.dp)) {
         Spacer(Modifier.height(26.dp))
@@ -364,7 +365,7 @@ private fun EditorScreen(
             if (canDelete) {
                 TextButton(onClick = onDelete) { Text("删除笔记", color = Color(0xFFB34A43)) }
             } else {
-                TextButton(onClick = onClose) { Text("取消") }
+                TextButton(onClick = onCancel) { Text("取消") }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("正在编辑", color = Color.Gray, style = MaterialTheme.typography.labelMedium)
