@@ -62,6 +62,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
+import io.github.neoruaa.glasmio.core.GlasmioTheme
+import io.github.neoruaa.glasmio.glass.GlasmioBackdropHost
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -149,12 +151,12 @@ private fun GsclipApp() {
         prefs.edit().putString("positions", encodePositions(positions)).apply()
     }
 
-    MaterialTheme {
-        Surface(
+    GlasmioTheme {
+        GlasmioBackdropHost(
             modifier = Modifier.fillMaxSize(),
-            color = Color(0xFFF4F3F0)
-        ) {
-            if (editing != null) {
+            sampledContent = { Box(Modifier.fillMaxSize().background(Color(0xFFF4F3F0))) },
+            overlayContent = {
+                if (editing != null) {
                 EditorScreen(
                     title = draftTitle, body = draftBody,
                     onTitleChange = { draftTitle = it },
@@ -203,7 +205,7 @@ private fun GsclipApp() {
                     onOpen = { note -> editing = note; draftTitle = note.title; draftBody = note.body }
                 )
             }
-        }
+        )
     }
 }
 
