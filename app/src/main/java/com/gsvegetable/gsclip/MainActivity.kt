@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -359,7 +360,7 @@ private fun EditorScreen(
     onBodyChange: (String) -> Unit, canDelete: Boolean,
     onCancel: () -> Unit, onClose: () -> Unit, onDelete: () -> Unit,
 ) {
-    Column(Modifier.fillMaxSize().background(Color(0xFFF4F3F0)).padding(horizontal = 22.dp)) {
+    Column(Modifier.fillMaxSize().background(Color(0xFFF4F3F0)).imePadding().padding(horizontal = 22.dp)) {
         Spacer(Modifier.height(26.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             if (canDelete) {
