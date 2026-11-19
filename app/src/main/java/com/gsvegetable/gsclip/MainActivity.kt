@@ -62,8 +62,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
-import io.github.neoruaa.glasmio.core.GlasmioTheme
-import io.github.neoruaa.glasmio.glass.GlasmioBackdropHost
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -151,62 +149,61 @@ private fun GsclipApp() {
         prefs.edit().putString("positions", encodePositions(positions)).apply()
     }
 
-    GlasmioTheme {
-        GlasmioBackdropHost(
+    MaterialTheme {
+        Surface(
             modifier = Modifier.fillMaxSize(),
-            sampledContent = { Box(Modifier.fillMaxSize().background(Color(0xFFF4F3F0))) },
-            overlayContent = {
-                if (editing != null) {
-                    EditorScreen(
-                        title = draftTitle, body = draftBody,
-                        onTitleChange = { draftTitle = it },
-                        onBodyChange = { draftBody = it },
-                        canDelete = editing?.id != -1L,
-                        onCancel = { editing = null },
-                        onClose = {
-                            val old = editing
-                            if (old != null && old.id != -1L) {
-                                val index = notes.indexOfFirst { it.id == old.id }
-                                if (index >= 0) notes[index] = old.copy(title = draftTitle, body = draftBody)
-                            } else if (draftTitle.isNotBlank() || draftBody.isNotBlank()) {
-                                val created = Note(System.currentTimeMillis(), draftTitle.ifBlank { "未命名笔记" }, draftBody, notePalette[notes.size % notePalette.size])
-                                notes.add(0, created)
-                                positions.remove(created.id)
-                            }
-                            editing = null
-                        },
-                        onDelete = {
-                            editing?.let { note ->
-                                if (note.id != -1L) {
-                                    lastDeleted = notes.find { it.id == note.id }
-                                    lastDeletedPosition = positions.remove(note.id)
-                                    notes.removeAll { it.id == note.id }
-                                }
-                            }
-                            editing = null
+            color = Color(0xFFF4F3F0)
+        ) {
+            if (editing != null) {
+                EditorScreen(
+                    title = draftTitle, body = draftBody,
+                    onTitleChange = { draftTitle = it },
+                    onBodyChange = { draftBody = it },
+                    canDelete = editing?.id != -1L,
+                    onCancel = { editing = null },
+                    onClose = {
+                        val old = editing
+                        if (old != null && old.id != -1L) {
+                            val index = notes.indexOfFirst { it.id == old.id }
+                            if (index >= 0) notes[index] = old.copy(title = draftTitle, body = draftBody)
+                        } else if (draftTitle.isNotBlank() || draftBody.isNotBlank()) {
+                            val created = Note(System.currentTimeMillis(), draftTitle.ifBlank { "未命名笔记" }, draftBody, notePalette[notes.size % notePalette.size])
+                            notes.add(0, created)
+                            positions.remove(created.id)
                         }
-                    )
-                } else {
-                    HomeScreen(
-                        notes = notes.filter { search.isBlank() || it.title.contains(search, true) || it.body.contains(search, true) },
-                        canvasMode = canvasMode, search = search,
-                        positions = positions,
-                        deletedNote = lastDeleted,
-                        onUndoDelete = {
-                            lastDeleted?.let { deleted ->
-                                notes.add(0, deleted)
-                                lastDeletedPosition?.let { positions[deleted.id] = it }
+                        editing = null
+                    },
+                    onDelete = {
+                        editing?.let { note ->
+                            if (note.id != -1L) {
+                                lastDeleted = notes.find { it.id == note.id }
+                                lastDeletedPosition = positions.remove(note.id)
+                                notes.removeAll { it.id == note.id }
                             }
-                            lastDeleted = null
-                            lastDeletedPosition = null
-                        },
-                        onSearchChange = { search = it }, onModeChange = { canvasMode = it },
-                        onCreate = { draftTitle = ""; draftBody = ""; editing = Note(-1, "", "", Color(0xFFE8E0D3)) },
-                        onOpen = { note -> editing = note; draftTitle = note.title; draftBody = note.body }
-                    )
-                }
+                        }
+                        editing = null
+                    }
+                )
+            } else {
+                HomeScreen(
+                    notes = notes.filter { search.isBlank() || it.title.contains(search, true) || it.body.contains(search, true) },
+                    canvasMode = canvasMode, search = search,
+                    positions = positions,
+                    deletedNote = lastDeleted,
+                    onUndoDelete = {
+                        lastDeleted?.let { deleted ->
+                            notes.add(0, deleted)
+                            lastDeletedPosition?.let { positions[deleted.id] = it }
+                        }
+                        lastDeleted = null
+                        lastDeletedPosition = null
+                    },
+                    onSearchChange = { search = it }, onModeChange = { canvasMode = it },
+                    onCreate = { draftTitle = ""; draftBody = ""; editing = Note(-1, "", "", Color(0xFFE8E0D3)) },
+                    onOpen = { note -> editing = note; draftTitle = note.title; draftBody = note.body }
+                )
             }
-        )
+        }
     }
 }
 
