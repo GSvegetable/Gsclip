@@ -136,6 +136,8 @@ private fun GsclipApp() {
     var search by remember { mutableStateOf("") }
     var draftTitle by remember { mutableStateOf("") }
     var draftBody by remember { mutableStateOf("") }
+    var lastDeleted by remember { mutableStateOf<Note?>(null) }
+    var lastDeletedPosition by remember { mutableStateOf<Offset?>(null) }
 
     LaunchedEffect(notes.toList()) {
         prefs.edit().putString("notes", encodeNotes(notes)).apply()
@@ -165,6 +167,16 @@ private fun GsclipApp() {
                                 positions.remove(created.id)
                             }
                             editing = null
+                        },
+                        onDelete = {
+                            editing?.let { note ->
+                                if (note.id != -1L) {
+                                    lastDeleted = notes.find { it.id == note.id }
+                                    lastDeletedPosition = positions.remove(note.id)
+                                    notes.removeAll { it.id == note.id }
+                                }
+                            }
+                            editing = null
                         }
                     )
                 } else {
@@ -172,6 +184,15 @@ private fun GsclipApp() {
                         notes = notes.filter { search.isBlank() || it.title.contains(search, true) || it.body.contains(search, true) },
                         canvasMode = canvasMode, search = search,
                         positions = positions,
+                        deletedNote = lastDeleted,
+                        onUndoDelete = {
+                            lastDeleted?.let { deleted ->
+                                notes.add(0, deleted)
+                                lastDeletedPosition?.let { positions[deleted.id] = it }
+                            }
+                            lastDeleted = null
+                            lastDeletedPosition = null
+                        },
                         onSearchChange = { search = it }, onModeChange = { canvasMode = it },
                         onCreate = { draftTitle = ""; draftBody = ""; editing = Note(-1, "", "", Color(0xFFE8E0D3)) },
                         onOpen = { note -> editing = note; draftTitle = note.title; draftBody = note.body }
@@ -186,6 +207,8 @@ private fun GsclipApp() {
 private fun HomeScreen(
     notes: List<Note>, canvasMode: Boolean, search: String,
     positions: MutableMap<Long, Offset>,
+    deletedNote: Note?,
+    onUndoDelete: () -> Unit,
     onSearchChange: (String) -> Unit, onModeChange: (Boolean) -> Unit,
     onCreate: () -> Unit, onOpen: (Note) -> Unit,
 ) {
@@ -217,6 +240,16 @@ private fun HomeScreen(
                 placeholder = { Text("搜索笔记") }, leadingIcon = { Icon(Icons.Rounded.Search, null) },
                 singleLine = true, shape = RoundedCornerShape(18.dp)
             )
+            if (deletedNote != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("已删除「${deletedNote.title.ifBlank { "未命名笔记" }}」", color = Color(0xFF77736D), style = MaterialTheme.typography.bodySmall)
+                    Spacer(Modifier.weight(1f))
+                    TextButton(onClick = onUndoDelete) { Text("撤销") }
+                }
+            }
             Spacer(Modifier.height(18.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(if (canvasMode) "灵感画布" else "最近记录", style = MaterialTheme.typography.titleMedium, color = Color(0xFF33312E), fontWeight = FontWeight.SemiBold)
@@ -285,13 +318,16 @@ private fun CanvasBoard(notes: List<Note>, positions: MutableMap<Long, Offset>, 
 @Composable
 private fun EditorScreen(
     title: String, body: String, onTitleChange: (String) -> Unit,
-    onBodyChange: (String) -> Unit, onClose: () -> Unit,
+    onBodyChange: (String) -> Unit, onClose: () -> Unit, onDelete: () -> Unit,
 ) {
     Column(Modifier.fillMaxSize().background(Color(0xFFF4F3F0)).padding(horizontal = 22.dp)) {
         Spacer(Modifier.height(26.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onClose) { Icon(Icons.Rounded.Close, null); Text("完成") }
-            Text("正在编辑", color = Color.Gray, style = MaterialTheme.typography.labelMedium)
+            TextButton(onClick = onDelete) { Text("删除笔记", color = Color(0xFFB34A43)) }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("正在编辑", color = Color.Gray, style = MaterialTheme.typography.labelMedium)
+                TextButton(onClick = onClose) { Icon(Icons.Rounded.Close, null); Text("完成") }
+            }
         }
         Spacer(Modifier.height(22.dp))
         OutlinedTextField(value = title, onValueChange = onTitleChange, modifier = Modifier.fillMaxWidth(), placeholder = { Text("标题") }, textStyle = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold), singleLine = true)
