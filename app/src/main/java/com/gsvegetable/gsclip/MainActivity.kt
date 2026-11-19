@@ -120,7 +120,7 @@ private fun GsclipApp() {
 }
 
 @Composable
-private fun HomeScreen(notes: List<Note>, canvasMode: Boolean, search: String, onSearch: (String) -> Unit, onMode: (Boolean) -> Unit, onCreate: () -> Unit, onOpen: (Note) -> Unit, onMove: (Long, Float, Float) -> Unit, onDelete: (Long) -> Unit) {
+private fun HomeScreen(notes: List<Note>, canvasMode: Boolean, search: String, onSearch: (String) -> Unit, onMode: (Boolean) -> Unit, onCreate: () -> Unit, onOpen: (Note) -> Unit, onMove: (Long, Float, Float) -> Unit) {
     Scaffold(containerColor = Color.Transparent, floatingActionButton = {
         FloatingActionButton(onClick = onCreate, shape = CircleShape, containerColor = ink, contentColor = Color.White, modifier = Modifier.shadow(12.dp, CircleShape)) {
             Icon(Icons.Rounded.Add, contentDescription = "新建笔记")
