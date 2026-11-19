@@ -156,15 +156,13 @@ private fun GsclipApp() {
                         onBodyChange = { draftBody = it },
                         onClose = {
                             val old = editing
-                            if (draftTitle.isNotBlank() || draftBody.isNotBlank()) {
-                                if (old == null || old.id == -1L) {
-                                    val created = Note(System.currentTimeMillis(), draftTitle.ifBlank { "未命名笔记" }, draftBody, Color(0xFFE8E0D3))
-                                    notes.add(0, created)
-                                    positions.remove(created.id)
-                                } else {
-                                    val index = notes.indexOfFirst { it.id == old.id }
-                                    if (index >= 0) notes[index] = old.copy(title = draftTitle, body = draftBody)
-                                }
+                            if (old != null && old.id != -1L) {
+                                val index = notes.indexOfFirst { it.id == old.id }
+                                if (index >= 0) notes[index] = old.copy(title = draftTitle, body = draftBody)
+                            } else if (draftTitle.isNotBlank() || draftBody.isNotBlank()) {
+                                val created = Note(System.currentTimeMillis(), draftTitle.ifBlank { "未命名笔记" }, draftBody, Color(0xFFE8E0D3))
+                                notes.add(0, created)
+                                positions.remove(created.id)
                             }
                             editing = null
                         }
