@@ -187,7 +187,7 @@ private fun NoteCard(note: Note, canvas: Boolean, onClick: () -> Unit, modifier:
 @Composable
 private fun CanvasBoard(notes: List<Note>, onOpen: (Note) -> Unit) {
     val positions = remember { mutableStateMapOf<Long, Offset>() }
-    BoxWithConstraints(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())) {
+    BoxWithConstraints(Modifier.fillMaxWidth().height(maxOf(480.dp, (notes.size * 190 + 120).dp)).verticalScroll(rememberScrollState())) {
         val rightX = (maxWidth.value - 250f).coerceAtLeast(0f)
         val boardHeight = maxOf(maxHeight, (notes.size * 190 + 120).dp)
         Box(Modifier.fillMaxWidth().height(boardHeight)) {
