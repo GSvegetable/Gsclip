@@ -186,7 +186,7 @@ private fun GsclipApp() {
                         editing = null
                     }
                 )
-            } else {
+                } else {
                 HomeScreen(
                     notes = notes.filter { search.isBlank() || it.title.contains(search, true) || it.body.contains(search, true) },
                     canvasMode = canvasMode, search = search,
@@ -204,6 +204,7 @@ private fun GsclipApp() {
                     onCreate = { draftTitle = ""; draftBody = ""; editing = Note(-1, "", "", Color(0xFFE8E0D3)) },
                     onOpen = { note -> editing = note; draftTitle = note.title; draftBody = note.body }
                 )
+            }
             }
         )
     }
