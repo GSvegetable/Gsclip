@@ -156,14 +156,9 @@ private fun GsclipApp() {
             modifier = Modifier.fillMaxSize(),
             sampledContent = { Box(Modifier.fillMaxSize().background(Color(0xFFF4F3F0))) },
             overlayContent = {
-                if (editing != null) {
-                EditorScreen(
-                    title = draftTitle, body = draftBody,
-                    onTitleChange = { draftTitle = it },
-                    onBodyChange = { draftBody = it },
-                    canDelete = editing?.id != -1L,
-                    onCancel = { editing = null },
-                    onClose = {
+                BoxWithConstraints(Modifier.fillMaxSize()) {
+                    val visibleNotes = notes.filter { search.isBlank() || it.title.contains(search, true) || it.body.contains(search, true) }
+                    val saveDraft = {
                         val old = editing
                         if (old != null && old.id != -1L) {
                             val index = notes.indexOfFirst { it.id == old.id }
@@ -174,8 +169,8 @@ private fun GsclipApp() {
                             positions.remove(created.id)
                         }
                         editing = null
-                    },
-                    onDelete = {
+                    }
+                    val deleteDraft = {
                         editing?.let { note ->
                             if (note.id != -1L) {
                                 lastDeleted = notes.find { it.id == note.id }
@@ -185,28 +180,151 @@ private fun GsclipApp() {
                         }
                         editing = null
                     }
-                )
-                } else {
-                HomeScreen(
-                    notes = notes.filter { search.isBlank() || it.title.contains(search, true) || it.body.contains(search, true) },
-                    canvasMode = canvasMode, search = search,
-                    positions = positions,
-                    deletedNote = lastDeleted,
-                    onUndoDelete = {
-                        lastDeleted?.let { deleted ->
-                            notes.add(0, deleted)
-                            lastDeletedPosition?.let { positions[deleted.id] = it }
-                        }
-                        lastDeleted = null
-                        lastDeletedPosition = null
-                    },
-                    onSearchChange = { search = it }, onModeChange = { canvasMode = it },
-                    onCreate = { draftTitle = ""; draftBody = ""; editing = Note(-1, "", "", Color(0xFFE8E0D3)) },
-                    onOpen = { note -> editing = note; draftTitle = note.title; draftBody = note.body }
-                )
-            }
+                    val createDraft = {
+                        draftTitle = ""
+                        draftBody = ""
+                        editing = Note(-1, "", "", Color(0xFFE8E0D3))
+                    }
+                    val openNote: (Note) -> Unit = { note ->
+                        editing = note
+                        draftTitle = note.title
+                        draftBody = note.body
+                    }
+                    if (maxWidth >= 700.dp) {
+                        TabletWorkspace(
+                            notes = visibleNotes, search = search, editing = editing,
+                            draftTitle = draftTitle, draftBody = draftBody,
+                            onSearchChange = { search = it }, onCreate = createDraft,
+                            onOpen = openNote, onTitleChange = { draftTitle = it },
+                            onBodyChange = { draftBody = it }, onCancel = { editing = null },
+                            onSave = saveDraft, onDelete = deleteDraft
+                        )
+                    } else if (editing != null) {
+                        EditorScreen(
+                            title = draftTitle, body = draftBody,
+                            onTitleChange = { draftTitle = it },
+                            onBodyChange = { draftBody = it },
+                            canDelete = editing?.id != -1L,
+                            onCancel = { editing = null }, onClose = saveDraft,
+                            onDelete = deleteDraft
+                        )
+                    } else {
+                        HomeScreen(
+                            notes = visibleNotes, canvasMode = canvasMode, search = search,
+                            positions = positions, deletedNote = lastDeleted,
+                            onUndoDelete = {
+                                lastDeleted?.let { deleted ->
+                                    notes.add(0, deleted)
+                                    lastDeletedPosition?.let { positions[deleted.id] = it }
+                                }
+                                lastDeleted = null
+                                lastDeletedPosition = null
+                            },
+                            onSearchChange = { search = it }, onModeChange = { canvasMode = it },
+                            onCreate = createDraft, onOpen = openNote
+                        )
+                    }
+                }
             }
         )
+    }
+}
+
+@Composable
+private fun TabletWorkspace(
+    notes: List<Note>,
+    search: String,
+    editing: Note?,
+    draftTitle: String,
+    draftBody: String,
+    onSearchChange: (String) -> Unit,
+    onCreate: () -> Unit,
+    onOpen: (Note) -> Unit,
+    onTitleChange: (String) -> Unit,
+    onBodyChange: (String) -> Unit,
+    onCancel: () -> Unit,
+    onSave: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Row(Modifier.fillMaxSize().background(Color(0xFFF4F3F0))) {
+        Column(
+            modifier = Modifier.width(320.dp).fillMaxSize()
+                .background(Color(0xFFF8F7F4).copy(alpha = .96f))
+                .padding(horizontal = 22.dp, vertical = 24.dp)
+        ) {
+            Text("GSCLIP", style = MaterialTheme.typography.labelMedium, color = Color(0xFF898782), fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("笔记", style = MaterialTheme.typography.headlineMedium, color = Color(0xFF22211F), fontWeight = FontWeight.Bold)
+                Spacer(Modifier.weight(1f))
+                Text("\${notes.size} 条", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+            }
+            Spacer(Modifier.height(18.dp))
+            OutlinedTextField(
+                value = search, onValueChange = onSearchChange, modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("搜索笔记") }, leadingIcon = { Icon(Icons.Rounded.Search, null) },
+                singleLine = true, shape = RoundedCornerShape(16.dp)
+            )
+            Spacer(Modifier.height(18.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("最近记录", style = MaterialTheme.typography.titleSmall, color = Color(0xFF77736D), fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = onCreate) {
+                    Icon(Icons.Rounded.Add, contentDescription = null)
+                    Text("新建")
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            if (notes.isEmpty()) {
+                EmptyState(isSearching = search.isNotBlank(), onCreate = onCreate)
+            } else {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(9.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
+                    items(notes, key = { it.id }) { note ->
+                        val selected = editing?.id == note.id
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().clickable { onOpen(note) },
+                            shape = RoundedCornerShape(16.dp),
+                            color = if (selected) Color(0xFFE9E5DD) else Color.Transparent
+                        ) {
+                            Column(Modifier.padding(horizontal = 14.dp, vertical = 13.dp)) {
+                                Text(note.title.ifBlank { "未命名笔记" }, style = MaterialTheme.typography.titleSmall, color = Color(0xFF292824), fontWeight = FontWeight.SemiBold, maxLines = 1)
+                                Spacer(Modifier.height(5.dp))
+                                Text(note.body.ifBlank { "暂无内容" }, style = MaterialTheme.typography.bodySmall, color = Color(0xFF85817A), maxLines = 2)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Box(Modifier.width(1.dp).fillMaxSize().background(Color(0xFFE6E3DD)))
+        Box(Modifier.weight(1f).fillMaxSize()) {
+            if (editing != null) {
+                EditorScreen(
+                    title = draftTitle, body = draftBody,
+                    onTitleChange = onTitleChange, onBodyChange = onBodyChange,
+                    canDelete = editing.id != -1L,
+                    onCancel = onCancel, onClose = onSave, onDelete = onDelete
+                )
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(32.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Surface(shape = RoundedCornerShape(24.dp), color = Color.White.copy(alpha = .65f)) {
+                        Icon(Icons.Rounded.ViewAgenda, contentDescription = null, modifier = Modifier.padding(20.dp), tint = Color(0xFF9A968E))
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    Text("选择一条笔记", style = MaterialTheme.typography.titleMedium, color = Color(0xFF77736D), fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(6.dp))
+                    Text("你的笔记内容会在这里展开", style = MaterialTheme.typography.bodyMedium, color = Color(0xFFA09C95))
+                }
+                FloatingActionButton(
+                    onClick = onCreate, modifier = Modifier.align(Alignment.BottomEnd).padding(28.dp),
+                    containerColor = Color(0xFF242424), contentColor = Color.White
+                ) { Icon(Icons.Rounded.Add, contentDescription = "新建笔记") }
+            }
+        }
     }
 }
 
