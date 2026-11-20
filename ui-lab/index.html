@@ -42,6 +42,28 @@
 @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:760px){.app{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr)}.sidebar{border-right:0}.workspace{display:none}.app.editing .sidebar{display:none}.app.editing .workspace{display:flex}.workspace-top{height:52px;padding:0 18px}.workspace-body{padding:22px}.editor-title{font-size:22px}.quick-actions{bottom:calc(90px + var(--safe-b))}}
 @media(min-width:761px) and (max-width:1050px){.app{grid-template-columns:minmax(280px,34%) 1fr}.side-head{padding-left:22px;padding-right:20px}.note-list{padding-left:12px;padding-right:12px}.quick-actions{right:20px}}
+
+/* Compact density pass: keep the whole sidebar visually restrained */
+.side-head{padding:14px 18px 10px!important;gap:8px!important}
+.toolbar-row{height:32px!important;gap:14px!important}
+.toolbar-row .icon-btn{width:32px!important;height:32px!important}
+.toolbar-row .icon-btn svg,.toolbar-row .compose-btn svg{width:21px!important;height:21px!important}
+.search-wrap{width:100%!important;flex:none!important}
+.side-head .search{height:34px!important;min-height:34px!important;padding:0 12px!important;border-radius:11px!important;font-size:12px!important}
+.note-list{padding:5px 12px 90px!important}
+.note-item{padding:10px 11px!important;border-radius:11px!important;margin-bottom:4px!important}
+.note-name{font-size:13px!important;line-height:1.35!important}
+.note-preview{font-size:11px!important;line-height:1.4!important;margin-top:4px!important}
+.note-time{font-size:10px!important;margin-top:5px!important}
+.bottom-nav{width:min(320px,calc(100% - 40px))!important;height:54px!important;bottom:calc(14px + var(--safe-b))!important;border-radius:19px!important;padding:4px!important}
+.nav-item{gap:2px!important;font-size:10px!important;border-radius:14px!important}
+.nav-item svg{width:17px!important;height:17px!important}
+.workspace-body{padding:30px!important}
+.editor-head{gap:9px!important;padding:4px 0 14px!important}
+.editor-title{font-size:22px!important}
+.editor-body{font-size:14px!important;padding:18px 0!important}
+.action{padding:7px 11px!important;font-size:12px!important;border-radius:9px!important}
+@media(max-width:760px){.workspace-body{padding:18px!important}.bottom-nav{width:min(320px,calc(100% - 36px))!important}}
 </style></head>
 <body>
 <div class="app" id="app"><aside class="sidebar">
